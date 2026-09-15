@@ -1,0 +1,232 @@
+<div class="page-shell" [class]="themeClass()">
+  <div class="world-scene" aria-hidden="true">
+    <div class="scene-moon"></div>
+    <div class="scene-glow scene-glow-one"></div>
+    <div class="scene-glow scene-glow-two"></div>
+    <div class="scene-symbols">✦　✧　✣　✦</div>
+    <div class="scene-lab-table">
+      <span class="scene-vial vial-one"></span>
+      <span class="scene-vial vial-two"></span>
+      <span class="scene-book"></span>
+    </div>
+  </div>
+  @switch (screen()) {
+    @case ('welcome') {
+      <section class="welcome-screen">
+        <header class="title-banner">
+          <span class="banner-ornament">✦</span>
+          <h1>Qual personagem desse mundo combina com você?</h1>
+          <span class="banner-ornament">✦</span>
+        </header>
+
+        <p class="subtitle">
+          Escolha seu avatar da jornada ou deixe o quiz revelar o melhor caminho para você.
+        </p>
+
+        <div class="character-grid">
+          @for (character of characters; track character.id) {
+            <button
+              type="button"
+              class="character-card"
+              [class.selected]="selectedCharacter() === character.id"
+              [style.border-color]="selectedCharacter() === character.id ? character.glow : '#d9b361'"
+              [style.box-shadow]="selectedCharacter() === character.id ? '0 0 0 3px ' + character.glow + '55' : 'none'"
+              (click)="selectCharacter(character.id)"
+            >
+              <div class="card-art" [style.background]="'linear-gradient(135deg, ' + character.color + ' 0%, #1d1d2f 100%)'">
+                <span class="character-image-fallback" aria-hidden="true"></span>
+                <img
+                  class="character-card-image"
+                  [src]="'assets/characters/' + character.id + '-idle.png'"
+                  [alt]="'Ilustração do personagem ' + character.name"
+                  (error)="handleImageError($event)"
+                />
+              </div>
+
+              <div class="card-copy">
+                <h2>{{ character.name }}</h2>
+                <p>{{ character.description }}</p>
+                <span class="card-tag">{{ character.title }}</span>
+              </div>
+            </button>
+          }
+        </div>
+
+        <div class="welcome-actions">
+          <button type="button" class="primary-button" (click)="continueToMap()">
+            <span>▶</span>
+            Continuar como {{ activeCharacter().name }}
+          </button>
+
+          <button type="button" class="secondary-button outline" (click)="startQuiz()">
+            Descobrir meu perfil
+          </button>
+        </div>
+      </section>
+    }
+
+    @case ('quiz') {
+      <section class="quiz-screen">
+        <div class="screen-topbar">
+          <button type="button" class="secondary-button" (click)="openWelcome()">Voltar</button>
+          <span class="question-counter">Pergunta {{ quizIndex() + 1 }} / {{ quizQuestions.length }}</span>
+        </div>
+
+        <div class="quiz-card">
+          <p class="eyebrow">Descobrindo seu caminho</p>
+          <h2>{{ currentQuestion().prompt }}</h2>
+
+          <div class="answer-list">
+            @for (option of currentQuestion().options; track option.label) {
+              <button type="button" class="answer-option" (click)="answerQuiz(option.character)">
+                {{ option.label }}
+              </button>
+            }
+          </div>
+        </div>
+      </section>
+    }
+
+    @case ('map') {
+      <section class="map-screen">
+        <header class="map-header">
+          <div class="hero-crest" [style.background]="'linear-gradient(135deg, ' + activeCharacter().color + ' 0%, #1d1d2f 100%)'">
+            <span class="character-image-fallback" aria-hidden="true"></span>
+            <img
+              class="hero-character-image"
+              [src]="characterImage()"
+              [alt]="'Ilustração do personagem ' + activeCharacter().name"
+              (error)="handleImageError($event)"
+            />
+          </div>
+
+          <div class="hero-summary">
+            <p class="eyebrow">Personagem ativo</p>
+            <h2>{{ activeCharacter().name }}</h2>
+            <p>{{ activeCharacter().title }}</p>
+          </div>
+        </header>
+
+        <div class="trail-panel">
+          <div class="trail-road">
+            <div class="trail-step completed">
+              <span>1</span>
+              <small>Intro</small>
+            </div>
+            <div class="trail-step active">
+              <span>2</span>
+              <small>Trilha</small>
+            </div>
+            <div class="trail-step">
+              <span>3</span>
+              <small>Medalha</small>
+            </div>
+          </div>
+        </div>
+
+        <div class="subject-panel">
+          @for (subject of activeSubjects(); track subject.id) {
+            <button
+              type="button"
+              class="subject-card"
+              [class.active]="selectedSubject() === subject.id"
+              (click)="openLesson(subject.id)"
+            >
+              <div class="subject-icon">{{ subject.icon }}</div>
+              <div>
+                <strong>{{ subject.label }}</strong>
+                <small>{{ subject.description }}</small>
+              </div>
+            </button>
+          }
+        </div>
+
+        <div class="year-panel">
+          @for (year of years; track year.year) {
+            <button
+              type="button"
+              class="year-card"
+              [class.completed]="progress().completedYears.includes(year.year)"
+              (click)="startYear(year.year)"
+            >
+              <span class="year-label">{{ year.label }}</span>
+              <strong>{{ year.medal === 'ouro' ? '🏆' : year.medal === 'prata' ? '🥈' : '🥉' }}</strong>
+            </button>
+          }
+        </div>
+
+        <div class="badge-strip">
+          @for (badge of progress().badges; track badge) {
+            <span class="badge-pill">{{ badge }}</span>
+          } @empty {
+            <span class="badge-pill soft">Ainda sem badges</span>
+          }
+        </div>
+
+        <button type="button" class="secondary-button wide" (click)="changeCharacter()">
+          Trocar personagem
+        </button>
+      </section>
+    }
+
+    @case ('lesson') {
+      <section class="lesson-screen">
+        <div class="lesson-card">
+          <div class="lesson-header">
+            <span class="lesson-tag">Rota {{ currentYearMeta().label }}</span>
+            <button type="button" class="ghost-button" (click)="returnToMap()">Voltar</button>
+          </div>
+
+          <div class="question-layout">
+            <div class="question-copy">
+              <h2>{{ currentYearMeta().label }}</h2>
+              <div class="challenge-box">
+                <p class="exercise-label">Pergunta da rota</p>
+                <strong>{{ currentChallenge().prompt }}</strong>
+              </div>
+            </div>
+
+            <div class="character-response" [class.speaking]="characterMood() === 'speaking'" [class.happy]="characterMood() === 'happy'">
+              <div class="character-portrait">
+                <span class="character-image-fallback" aria-hidden="true"></span>
+                <img
+                  class="character-response-image"
+                  [src]="characterImage(characterMood())"
+                  [alt]="characterMood() === 'speaking' ? activeCharacter().name + ' dando uma orientação' : activeCharacter().name"
+                  (error)="handleImageError($event)"
+                />
+              </div>
+              <p class="response-caption">
+                {{ characterMood() === 'speaking' ? 'Uma pista para você' : characterMood() === 'happy' ? 'Muito bem!' : 'Seu companheiro de jornada' }}
+              </p>
+            </div>
+          </div>
+
+          <p class="lesson-voice">{{ activeCharacter().voice }}</p>
+
+          @if (feedback()) {
+            <div class="feedback-banner" [class.success]="isCorrectAnswer() === true" [class.error]="isCorrectAnswer() === false">
+              {{ feedback() }}
+            </div>
+          }
+
+          <div class="answer-box">
+            <label for="answer">Sua resposta</label>
+            <input
+              id="answer"
+              type="text"
+              [value]="answerInput()"
+              (input)="answerInput.set($any($event.target).value)"
+              placeholder="Escreva sua resposta"
+            />
+          </div>
+
+          <button type="button" class="primary-button" (click)="handleAnswerSubmit()">
+            Responder
+          </button>
+        </div>
+      </section>
+    }
+  }
+
+</div>
