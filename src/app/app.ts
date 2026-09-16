@@ -182,14 +182,23 @@ export class App {
   readonly currentLesson = computed(() => subjectCatalog[this.selectedSubject()]);
   readonly currentQuestion = computed(() => quizQuestions[this.quizIndex()]);
   readonly yearQuestions = computed(() => yearQuestionBank[String(this.selectedYear())] ?? []);
-  readonly currentChallenge = computed(() => this.yearQuestions()[this.challengeIndex()] ?? null);
+  readonly subjectQuestions = computed(() => {
+    const activeSubjectIds = this.activeCharacter().subjects;
+    const subject = activeSubjectIds.includes(this.selectedSubject())
+      ? this.selectedSubject()
+      : activeSubjectIds[0];
+
+    return this.yearQuestions().filter((question) => question.subject === subject);
+  });
+  readonly currentChallenge = computed(() => this.subjectQuestions()[this.challengeIndex()] ?? null);
   readonly currentYearMeta = computed(() => this.years.find((item) => item.year === this.selectedYear()) ?? this.years[0]);
 
   constructor() {
     const savedProfile = this.readProfile();
     if (savedProfile) {
       this.selectedCharacter.set(savedProfile.character);
-      this.selectedSubject.set(savedProfile.subject ?? this.character(savedProfile.character).subjects[0]);
+      const characterSubjects = this.character(savedProfile.character).subjects;
+      this.selectedSubject.set(characterSubjects.includes(savedProfile.subject) ? savedProfile.subject : characterSubjects[0]);
       this.progress.set(savedProfile.progress);
       this.screen.set('map');
     } else {
@@ -306,7 +315,7 @@ export class App {
     if (isCorrect) {
       this.isCorrectAnswer.set(true);
       const nextIndex = this.challengeIndex() + 1;
-      const questions = this.yearQuestions();
+      const questions = this.subjectQuestions();
 
       if (nextIndex < questions.length) {
         this.challengeIndex.set(nextIndex);

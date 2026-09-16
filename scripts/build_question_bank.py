@@ -1,5 +1,6 @@
 import json
 import re
+import unicodedata
 from pathlib import Path
 
 root = Path(__file__).resolve().parent.parent
@@ -7,9 +8,9 @@ markdown_path = root / 'perguntas_londrina_1ao5ano.md'
 output_path = root / 'src' / 'app' / 'question-bank.ts'
 
 subject_alias = {
-    'Língua Portuguesa': 'lingua-portuguesa',
-    'Matemática': 'matematica',
-    'Ciências': 'ciencias',
+    'Lingua Portuguesa': 'lingua-portuguesa',
+    'Matematica': 'matematica',
+    'Ciencias': 'ciencias',
     'Geografia': 'geografia',
     'História': 'historia',
     'Arte': 'arte',
@@ -20,7 +21,8 @@ subject_alias = {
 
 
 def normalize_subject(raw: str) -> str:
-    value = raw.strip()
+    value = re.sub(r'^[^\w]+', '', raw.strip(), flags=re.UNICODE)
+    value = ''.join(character for character in unicodedata.normalize('NFD', value) if not unicodedata.combining(character))
     if value in subject_alias:
         return subject_alias[value]
     return re.sub(r'[^a-z0-9]+', '-', value.lower()).strip('-')
