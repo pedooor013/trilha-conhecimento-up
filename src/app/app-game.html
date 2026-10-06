@@ -1,0 +1,266 @@
+<main class="page-shell game-shell" [class]="themeClass()">
+  <div class="world-scene" aria-hidden="true">
+    <div class="scene-moon"></div>
+    <div class="scene-glow scene-glow-one"></div>
+    <div class="scene-glow scene-glow-two"></div>
+    <div class="scene-symbols">✦　✧　✣　✦</div>
+    <div class="scene-lab-table">
+      <span class="scene-vial vial-one"></span>
+      <span class="scene-vial vial-two"></span>
+      <span class="scene-book"></span>
+    </div>
+  </div>
+
+  <header class="game-brand">
+    <span class="brand-mark" aria-hidden="true">✦</span>
+    <div>
+      <p>Reino das Seis Trilhas</p>
+      <small>Trilha do Conhecimento</small>
+    </div>
+    @if (screen() !== 'welcome') {
+      <button type="button" class="map-return" (click)="returnToAdventureMap()" aria-label="Voltar ao mapa">
+        Mapa
+      </button>
+    }
+  </header>
+
+  @switch (screen()) {
+    @case ('welcome') {
+      <section class="welcome-screen adventure-welcome" aria-labelledby="welcome-title">
+        <div class="welcome-copy">
+          <p class="eyebrow">Uma aventura para descobrir</p>
+          <h1 id="welcome-title">O reino precisa de um Guardião do Conhecimento.</h1>
+          <p>Uma tempestade separou o reino. Ajude seis aventureiros a reconstruir caminhos, amizades e histórias.</p>
+          <button type="button" class="primary-button start-button" (click)="continueToMap()">
+            <span aria-hidden="true">▶</span> Começar a aventura
+          </button>
+        </div>
+        <div class="welcome-party" aria-label="Os seis aventureiros do reino">
+          @for (adventure of adventures; track adventure.id) {
+            <img
+              [src]="characterImage('idle', adventure.characterId)"
+              [alt]="'Aventureiro: ' + adventure.characterId"
+              (error)="handleImageError($event)"
+            />
+          }
+        </div>
+      </section>
+    }
+
+    @case ('map') {
+      <section class="map-screen adventure-map" aria-labelledby="map-title">
+        <div class="map-heading">
+          <div>
+            <p class="eyebrow">Sua jornada</p>
+            <h1 id="map-title">O mapa do reino</h1>
+            <p>Escolha a próxima trilha. Cada resposta ajuda o mundo a se recuperar.</p>
+          </div>
+          <div class="map-total" aria-label="Aventuras concluídas">
+            <strong>{{ gameProgress().completedAdventures.length }} / 6</strong>
+            <span>trilhas restauradas</span>
+          </div>
+        </div>
+
+        <div class="adventure-grid">
+          @for (adventure of adventures; track adventure.id; let index = $index) {
+            <button
+              type="button"
+              class="adventure-card"
+              [class]="'adventure-card status-' + adventureStatus(adventure.id)"
+              [class.region-restored]="adventureStatus(adventure.id) === 'completed'"
+              [disabled]="adventureStatus(adventure.id) === 'locked'"
+              (click)="startAdventure(adventure.id)"
+              [attr.aria-label]="adventure.title + ', ' + (adventureStatus(adventure.id) === 'locked' ? 'bloqueada' : adventureStatus(adventure.id) === 'completed' ? 'concluída' : 'disponível')"
+            >
+              <span class="region-number">{{ (index + 1).toString().padStart(2, '0') }}</span>
+              <span class="region-art" [style.background]="'linear-gradient(145deg, ' + character(adventure.characterId).color + ', #182a35)'">
+                <img [src]="characterImage('idle', adventure.characterId)" [alt]="''" (error)="handleImageError($event)" />
+              </span>
+              <span class="region-copy">
+                <small class="region-location">{{ adventure.location }}</small>
+                <strong>{{ adventure.title }}</strong>
+                <span>{{ adventure.objective }}</span>
+              </span>
+              <span class="region-progress">
+                <span class="progress-track"><span [style.width.%]="(gameProgress().challengeProgress[adventure.id] ?? 0) / 15 * 100"></span></span>
+                <small>
+                  @switch (adventureStatus(adventure.id)) {
+                    @case ('locked') { Trilha bloqueada }
+                    @case ('completed') { {{ adventure.artifact }} conquistado }
+                    @case ('in_progress') { {{ adventure.progressLabel }}: {{ gameProgress().challengeProgress[adventure.id] ?? 0 }} / 15 }
+                    @default { Começar missão }
+                  }
+                </small>
+              </span>
+              @if (adventureStatus(adventure.id) === 'locked') {
+                <span class="region-lock" aria-hidden="true">⌑</span>
+              }
+            </button>
+          }
+        </div>
+
+        <section class="artifact-collection" aria-labelledby="collection-title">
+          <div class="collection-heading">
+            <div>
+              <p class="eyebrow">Relíquias da jornada</p>
+              <h2 id="collection-title">Tesouros do Guardião</h2>
+            </div>
+            <span>{{ gameProgress().unlockedArtifacts.length }} / 6</span>
+          </div>
+          <div class="artifact-list">
+            @for (adventure of artifactAdventures; track adventure.id) {
+              <div class="artifact-item" [class.unlocked]="gameProgress().unlockedArtifacts.includes(adventure.id)">
+                <span aria-hidden="true">{{ gameProgress().unlockedArtifacts.includes(adventure.id) ? '✦' : '·' }}</span>
+                <span>{{ adventure.artifact }}</span>
+                @if (gameProgress().unlockedArtifacts.includes(adventure.id)) { <strong aria-label="Conquistado">✓</strong> }
+              </div>
+            }
+            <div class="artifact-item final-artifact" [class.unlocked]="gameProgress().finalCompleted">
+              <span aria-hidden="true">{{ gameProgress().finalCompleted ? '★' : '·' }}</span>
+              <span>Estrela do Conhecimento</span>
+              @if (gameProgress().finalCompleted) { <strong aria-label="Conquistada">✓</strong> }
+            </div>
+          </div>
+        </section>
+      </section>
+    }
+
+    @case ('intro') {
+      <section class="story-screen" aria-labelledby="story-title">
+        <div class="story-character" [style.background]="'linear-gradient(145deg, ' + activeCharacter().color + ', #172634)'">
+          <img [src]="characterImage('speaking', activeAdventure().characterId)" [alt]="activeCharacter().name + ' contando a missão'" (error)="handleImageError($event)" />
+        </div>
+        <div class="story-copy">
+          <p class="eyebrow">{{ activeAdventure().location }} · {{ activeAdventure().subjects }}</p>
+          <h1 id="story-title">{{ activeAdventure().title }}</h1>
+          @for (line of activeAdventure().intro; track $index) {
+            <p class="story-line">{{ line }}</p>
+          }
+          <p class="story-goal"><strong>Missão:</strong> {{ activeAdventure().objective }}</p>
+          <div class="story-actions">
+            <button type="button" class="secondary-button listen-button" (click)="toggleNarration(activeAdventure().intro.join(' '), activeAdventure().characterId)" [attr.aria-label]="narrationPlaying() ? 'Parar narração' : 'Ouvir a história'">{{ narrationPlaying() ? '■ Parar' : '🔊 Ouvir' }}</button>
+            <button type="button" class="primary-button" (click)="beginAdventure()">Começar missão <span aria-hidden="true">→</span></button>
+          </div>
+        </div>
+      </section>
+    }
+
+    @case ('challenge') {
+      <section class="challenge-screen" aria-labelledby="challenge-title">
+        <div class="challenge-topline">
+          <div>
+            <p class="eyebrow">{{ activeAdventure().progressLabel }} {{ adventureCount() }} / 15</p>
+            <h1>{{ activeAdventure().title }}</h1>
+          </div>
+          <span class="challenge-count">{{ challengeIndex() + 1 }} / 15</span>
+        </div>
+        <div class="quest-progress" role="progressbar" [attr.aria-valuenow]="adventureCount()" aria-valuemin="0" aria-valuemax="15" [attr.aria-label]="activeAdventure().progressLabel">
+          <span [style.width.%]="adventureCount() / 15 * 100"></span>
+        </div>
+
+        <div class="challenge-scene">
+          <div class="challenge-character" [class.happy]="isCorrectAnswer() === true">
+            <img [src]="characterImage(characterMood(), activeAdventure().characterId)" [alt]="activeCharacter().name + (isCorrectAnswer() === true ? ' comemorando' : ' acompanhando a missão')" (error)="handleImageError($event)" />
+          </div>
+          <div class="challenge-content">
+            <p class="story-context">{{ activeAdventureChallenge().context || activeAdventure().successLine }}</p>
+            <h2 id="challenge-title">{{ activeAdventureChallenge().prompt }}</h2>
+            <button type="button" class="listen-button" (click)="toggleChallengeNarration()" [attr.aria-label]="narrationPlaying() ? 'Parar narração' : 'Ouvir história, pergunta e alternativas'">{{ narrationPlaying() ? '■ Parar' : '🔊 Ouvir tudo' }}</button>
+          </div>
+        </div>
+
+        <div class="answer-grid" role="group" [attr.aria-label]="'Alternativas para: ' + activeAdventureChallenge().prompt">
+          @for (option of activeAdventureChallenge().options; track $index) {
+            <button
+              type="button"
+              class="answer-card"
+              [class.answer-selected]="selectedAnswer() === $index && isCorrectAnswer() === true"
+              [class.answer-retry]="selectedAnswer() === $index && isCorrectAnswer() === false"
+              [disabled]="isCorrectAnswer() === true"
+              [attr.aria-pressed]="selectedAnswer() === $index"
+              (click)="chooseAnswer($index)"
+            >
+              <span class="answer-marker" aria-hidden="true">{{ ['A', 'B', 'C', 'D'][$index] }}</span>
+              <span>{{ option }}</span>
+            </button>
+          }
+        </div>
+
+        @if (isCorrectAnswer() === true) {
+          <div class="success-celebration" aria-hidden="true">
+            <div class="celebration-wash"></div>
+            <span class="celebration-confetti confetti-one">✦</span>
+            <span class="celebration-confetti confetti-two">●</span>
+            <span class="celebration-confetti confetti-three">✧</span>
+            <span class="celebration-confetti confetti-four">◆</span>
+            <span class="celebration-confetti confetti-five">✦</span>
+            <span class="celebration-confetti confetti-six">●</span>
+            <span class="celebration-confetti confetti-seven">✧</span>
+            <span class="celebration-confetti confetti-eight">◆</span>
+            <div class="celebration-message"><span>✦</span><strong>Muito bem!</strong><span>✦</span></div>
+          </div>
+        }
+
+        @if (feedback()) {
+          <div class="feedback-banner" [class.success]="isCorrectAnswer() === true" [class.error]="isCorrectAnswer() === false" role="status" aria-live="polite">
+            {{ feedback() }}
+          </div>
+        }
+        @if (isCorrectAnswer() === true) {
+          <button type="button" class="primary-button continue-button" (click)="continueChallenge()">
+            {{ challengeIndex() === 14 ? (activeAdventure().id === 'heroi' ? 'Concluir jornada' : 'Receber artefato') : 'Continuar' }} <span aria-hidden="true">→</span>
+          </button>
+        }
+      </section>
+    }
+
+    @case ('checkpoint') {
+      <section class="checkpoint-screen" aria-labelledby="checkpoint-title">
+        <div class="checkpoint-star" aria-hidden="true">✦</div>
+        <p class="eyebrow">{{ activeAdventure().progressLabel }} · {{ challengeIndex() }} / 15</p>
+        <h1 id="checkpoint-title">{{ activeAdventure().checkpoint[checkpointIndex()] }}</h1>
+        <p>{{ activeAdventure().checkpoint[checkpointIndex() === 0 ? 1 : 0] }}</p>
+        <button type="button" class="primary-button" (click)="continueCheckpoint()">Seguir aventura <span aria-hidden="true">→</span></button>
+      </section>
+    }
+
+    @case ('artifact') {
+      <section class="artifact-screen" aria-labelledby="artifact-title">
+        <div class="artifact-spark" aria-hidden="true">✦</div>
+        <div class="artifact-character" [style.background]="'linear-gradient(145deg, ' + activeCharacter().color + ', #172634)'">
+          <img [src]="characterImage('happy', activeAdventure().characterId)" [alt]="activeCharacter().name + ' comemorando a missão concluída'" (error)="handleImageError($event)" />
+        </div>
+        <p class="eyebrow">Trilha restaurada</p>
+        <h1 id="artifact-title">{{ activeAdventure().artifact }}</h1>
+        <p>{{ activeAdventure().artifactDescription }}</p>
+        <p class="artifact-quote">{{ activeAdventure().successLine }}</p>
+        <button type="button" class="primary-button" (click)="returnToAdventureMap()">Voltar ao mapa <span aria-hidden="true">→</span></button>
+      </section>
+    }
+
+    @case ('ending') {
+      <section class="ending-screen" aria-labelledby="ending-title">
+        <p class="eyebrow">O Reino das Seis Trilhas</p>
+        <h1 id="ending-title">Você era o sexto Guardião.</h1>
+        <p class="ending-lead">Os cinco artefatos se uniram e revelaram a Estrela do Conhecimento.</p>
+        <div class="ending-party">
+          @for (adventure of artifactAdventures; track adventure.id) {
+            <div class="ending-character">
+              <img [src]="characterImage('happy', adventure.characterId)" [alt]="character(adventure.characterId).name" (error)="handleImageError($event)" />
+              <span>{{ character(adventure.characterId).name }}</span>
+            </div>
+          }
+        </div>
+        <div class="ending-relics">
+          @for (adventure of adventures; track adventure.id) {
+            <span>{{ adventure.artifact }}</span>
+          }
+          <strong>★ Estrela do Conhecimento</strong>
+        </div>
+        <h2>Parabéns!</h2>
+        <p>Você restaurou o Reino das Seis Trilhas.</p>
+        <button type="button" class="secondary-button" (click)="returnToAdventureMap()">Rever o mapa</button>
+      </section>
+    }
+  }
+</main>
